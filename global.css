@@ -1,0 +1,84 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+/*
+ * Design tokens from AGENTS.md / DESIGN_SYSTEM.md.
+ * Native only reads the first font in a --font-* value, so no fallback list is needed,
+ * but one is kept for the web build.
+ */
+@theme {
+  --color-background: #FAF6F0;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #332E27;
+  --color-text-secondary: #8B8175;
+  --color-accent: #4B6B60;
+  --color-tag-tint: #E4EBE8;
+  --color-border: #E7E0D6;
+
+  --font-sans: "Inter_400Regular", sans-serif;
+  --font-sans-medium: "Inter_500Medium", sans-serif;
+  --font-sans-semibold: "Inter_600SemiBold", sans-serif;
+  --font-sans-bold: "Inter_700Bold", sans-serif;
+
+  --font-serif: "Fraunces_400Regular", serif;
+  --font-serif-semibold: "Fraunces_600SemiBold", serif;
+  --font-serif-italic: "Fraunces_400Regular_Italic", serif;
+
+  --radius-btn: 10px;
+
+  --shadow-card: 0 1px 3px rgba(51, 46, 39, 0.09), 0 4px 12px rgba(51, 46, 39, 0.05);
+}
+
+/*
+ * Reusable multi-property patterns called for in DESIGN_SYSTEM.md, so every
+ * screen builds these the same way instead of re-composing the same utilities.
+ * BEM naming per AGENTS.md.
+ */
+@layer components {
+  .screen {
+    @apply flex-1 bg-background px-6;
+  }
+
+  .card {
+    @apply bg-surface rounded-2xl shadow-card;
+  }
+
+  .tag {
+    @apply bg-tag-tint rounded-full px-3 py-1;
+  }
+
+  .tag__label {
+    @apply font-sans-medium text-text-secondary text-xs;
+  }
+
+  .btn--primary {
+    @apply rounded-btn items-center justify-center px-5 py-3.5 bg-accent;
+  }
+
+  .btn--primary__label {
+    @apply font-sans-semibold text-white text-base;
+  }
+
+  .btn--secondary {
+    @apply rounded-btn items-center justify-center px-5 py-3.5 bg-transparent border border-border;
+  }
+
+  .btn--secondary__label {
+    @apply font-sans-semibold text-accent text-base;
+  }
+}
+
+/*
+ * nativewind/theme sets --font-sans/--font-serif to native system fonts inside
+ * @media ios / @media android blocks. Those aren't part of an @theme block, so
+ * Tailwind won't merge them with our overrides above - on native they'd win by
+ * source order and silently revert every screen back to the system font. This
+ * repeats the override last, unconditionally, so ours always wins on every platform.
+ */
+:root {
+  --font-sans: "Inter_400Regular", sans-serif;
+  --font-serif: "Fraunces_400Regular", serif;
+}
