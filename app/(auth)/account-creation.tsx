@@ -2,6 +2,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 
+/**
+ * Account creation screen component (placeholder for future implementation).
+ * @returns {JSX.Element} The account creation screen with a back button.
+ */
 export default function AccountCreation() {
   const router = useRouter();
 

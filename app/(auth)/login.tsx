@@ -2,6 +2,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 
+/**
+ * Login screen component (placeholder for future implementation).
+ * @returns {JSX.Element} The login screen with a back button.
+ */
 export default function Login() {
   const router = useRouter();
 

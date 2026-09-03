@@ -4,6 +4,10 @@ import { Stack, useRouter } from "expo-router";
 
 import { APP_NAME } from "@/constants/app";
 
+/**
+ * Welcome screen component that displays the app name and provides options to get started or log in.
+ * @returns {JSX.Element} The welcome screen with navigation buttons.
+ */
 export default function Welcome() {
   const router = useRouter();
 
