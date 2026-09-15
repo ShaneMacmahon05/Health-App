@@ -17,9 +17,11 @@ interface Props {
   totalSteps: number;
   value: string;
   submitting: boolean;
+  error: string | null;
   onChangeText: (text: string) => void;
   onSkip: () => void;
   onBuildPlan: () => void;
+  onRetry: () => void;
 }
 
 // The final onboarding screen (Screen 9). Unlike the structured questions,
@@ -31,9 +33,11 @@ export function AnythingElseStep({
   totalSteps,
   value,
   submitting,
+  error,
   onChangeText,
   onSkip,
   onBuildPlan,
+  onRetry,
 }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6F0" }}>
@@ -64,24 +68,39 @@ export function AnythingElseStep({
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            className="btn--secondary flex-1 mr-3"
-            onPress={onSkip}
-            disabled={submitting}
-            activeOpacity={0.7}
-            style={{ opacity: submitting ? 0.5 : 1 }}
-          >
-            <Text className="btn--secondary__label">Skip</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="btn--primary flex-1"
-            onPress={onBuildPlan}
-            disabled={submitting}
-            activeOpacity={0.7}
-            style={{ opacity: submitting ? 0.5 : 1 }}
-          >
-            <Text className="btn--primary__label">Build my plan</Text>
-          </TouchableOpacity>
+          {error ? (
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="font-sans text-accent text-sm flex-1 mr-3">{error}</Text>
+              <TouchableOpacity
+                onPress={onRetry}
+                disabled={submitting}
+                activeOpacity={0.7}
+                className="min-h-11 justify-center"
+              >
+                <Text className="font-sans-semibold text-accent text-sm">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <View style={styles.footerButtonRow}>
+            <TouchableOpacity
+              className="btn--secondary flex-1 mr-3"
+              onPress={onSkip}
+              disabled={submitting}
+              activeOpacity={0.7}
+              style={{ opacity: submitting ? 0.5 : 1 }}
+            >
+              <Text className="btn--secondary__label">Skip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="btn--primary flex-1"
+              onPress={onBuildPlan}
+              disabled={submitting}
+              activeOpacity={0.7}
+              style={{ opacity: submitting ? 0.5 : 1 }}
+            >
+              <Text className="btn--primary__label">Build my plan</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -107,12 +126,14 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   footer: {
-    flexDirection: "row",
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: "#FAF6F0",
     borderTopWidth: 1,
     borderTopColor: "#E7E0D6",
+  },
+  footerButtonRow: {
+    flexDirection: "row",
   },
 });

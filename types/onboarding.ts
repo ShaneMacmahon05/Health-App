@@ -61,3 +61,27 @@ export interface OnboardingQuestionDef {
   options: OnboardingOption[];
   otherFieldLabel?: string;
 }
+
+// Shape of the one-row-per-user `onboarding_responses` table in Supabase -
+// the batched, snake_case form `OnboardingAnswers` is converted into on
+// final submit. See lib/onboarding.ts.
+export interface OnboardingResponseRow {
+  user_id: string;
+  primary_goal: string;
+  primary_goal_other: string | null;
+  activity_level: string;
+  barriers: string[];
+  barrier_other: string | null;
+  daily_time: string;
+  preferred_activities: string[];
+  activity_other: string | null;
+  habit_times: string[];
+  habit_time_other: string | null;
+  goal_specific_question: string;
+  goal_specific_answers: string[];
+  goal_specific_other: string | null;
+  constraints: string[];
+  constraints_detail: string | null;
+  additional_context: string | null;
+  completed_at: string;
+}
