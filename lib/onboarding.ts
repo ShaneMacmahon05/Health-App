@@ -68,15 +68,32 @@ export async function saveOnboardingResponses(
   return { error: null };
 }
 
+export type OnboardingStatus =
+  | { status: "complete" }
+  | { status: "incomplete" }
+  | { status: "error"; error: string };
+
 // Supabase is the source of truth for onboarding completion - a user is
 // complete only when their own onboarding_responses row exists with a
 // non-null completed_at. Do not use AsyncStorage/Zustand as this flag.
-export async function hasCompletedOnboarding(): Promise<boolean> {
+//
+// Returns a tri-state result rather than a boolean: a failed auth/DB lookup
+// is a distinct "error" state from a genuine "incomplete," so callers (e.g.
+// Login) can retry instead of silently routing a lookup failure into
+// onboarding.
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) return false;
+  if (userError) {
+    return { status: "error", error: userError.message };
+  }
+
+  if (!user) {
+    return { status: "error", error: "You need to be signed in." };
+  }
 
   const { data, error } = await supabase
     .from("onboarding_responses")
@@ -84,7 +101,9 @@ export async function hasCompletedOnboarding(): Promise<boolean> {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error || !data) return false;
+  if (error) {
+    return { status: "error", error: error.message };
+  }
 
-  return data.completed_at !== null;
+  return data?.completed_at ? { status: "complete" } : { status: "incomplete" };
 }

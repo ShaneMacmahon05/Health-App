@@ -17,6 +17,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // PKCE puts the recovery token in a `?code=` query param instead of a
+    // URL fragment, so the password-reset deep link can be read with
+    // expo-router's normal search params - no fragment parsing needed.
+    flowType: "pkce",
   },
 });
 
