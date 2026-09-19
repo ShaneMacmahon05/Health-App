@@ -19,12 +19,13 @@ interface Props {
   submitting: boolean;
   error: string | null;
   onChangeText: (text: string) => void;
+  onBack: () => void;
   onSkip: () => void;
   onBuildPlan: () => void;
   onRetry: () => void;
 }
 
-// The final onboarding screen (Screen 9). Unlike the structured questions,
+// The final onboarding screen (Screen 5b). Unlike the structured questions,
 // this one is optional free text with equal-weight Skip / Build my plan
 // actions instead of Next/Back, so it gets its own small component rather
 // than being folded into OnboardingQuestionScreen.
@@ -35,6 +36,7 @@ export function AnythingElseStep({
   submitting,
   error,
   onChangeText,
+  onBack,
   onSkip,
   onBuildPlan,
   onRetry,
@@ -81,6 +83,15 @@ export function AnythingElseStep({
               </TouchableOpacity>
             </View>
           ) : null}
+          <TouchableOpacity
+            className="btn--secondary mb-3"
+            onPress={onBack}
+            disabled={submitting}
+            activeOpacity={0.7}
+            style={{ opacity: submitting ? 0.5 : 1 }}
+          >
+            <Text className="btn--secondary__label">Back</Text>
+          </TouchableOpacity>
           <View style={styles.footerButtonRow}>
             <TouchableOpacity
               className="btn--secondary flex-1 mr-3"

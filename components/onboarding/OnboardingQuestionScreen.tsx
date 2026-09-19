@@ -13,42 +13,68 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OnboardingOptionButton } from "@/components/onboarding/OnboardingOptionButton";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
-import type { OnboardingQuestionDef } from "@/types/onboarding";
+import { REQUIRED_FOCUS_AREA_BY_GOAL } from "@/data/onboardingQuestions";
+import type { OnboardingAnswers, OnboardingQuestionDef, OnboardingTextFieldId } from "@/types/onboarding";
 
 interface Props {
   question: OnboardingQuestionDef;
-  step: number;
+  answers: OnboardingAnswers;
+  stepIndex: number;
   totalSteps: number;
-  selected: string[];
-  otherText: string;
   canGoBack: boolean;
   onSelect: (value: string) => void;
-  onOtherTextChange: (text: string) => void;
+  onTextChange: (field: OnboardingTextFieldId, text: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-// The single reusable screen for every structured onboarding question
-// (Questions 1-8, including whichever branch of Question 7 applies). Screen
-// 9 has different actions/behaviour and gets its own component.
+// The single reusable screen for every structured onboarding question -
+// Questions 1-7, whichever adaptive focus-area branch(es) apply, and
+// Constraints. The final optional free-text screen has different
+// actions/behaviour and gets its own component (AnythingElseStep).
 export function OnboardingQuestionScreen({
   question,
-  step,
+  answers,
+  stepIndex,
   totalSteps,
-  selected,
-  otherText,
   canGoBack,
   onSelect,
-  onOtherTextChange,
+  onTextChange,
   onNext,
   onBack,
 }: Props) {
-  const showOtherField = useMemo(
-    () => selected.some((value) => question.options.find((o) => o.value === value)?.revealsText),
-    [selected, question.options]
-  );
+  const selected = answers[question.id];
 
-  const canContinue = selected.length > 0;
+  // Question 2 only: the focus area forced by the primary goal is shown as
+  // required and can't be tapped off (enforced in the store).
+  const requiredFocusArea =
+    question.id === "focusAreas" && answers.primaryGoal[0]
+      ? REQUIRED_FOCUS_AREA_BY_GOAL[answers.primaryGoal[0]]
+      : undefined;
+
+  // One text box per distinct revealed field among the currently-selected
+  // options - several options can share one field (e.g. Constraints).
+  const activeReveals = useMemo(() => {
+    const seen = new Set<OnboardingTextFieldId>();
+    const reveals: { field: OnboardingTextFieldId; label: string }[] = [];
+    for (const option of question.options) {
+      if (option.reveals && selected.includes(option.value) && !seen.has(option.reveals.field)) {
+        seen.add(option.reveals.field);
+        reveals.push({ field: option.reveals.field, label: option.reveals.label });
+      }
+    }
+    return reveals;
+  }, [question.options, selected]);
+
+  const canContinue = useMemo(() => {
+    if (selected.length === 0) return false;
+    for (const option of question.options) {
+      if (!option.reveals?.required || !selected.includes(option.value)) continue;
+      const text = answers[option.reveals.field];
+      if (!text || text.trim().length === 0) return false;
+    }
+    return true;
+  }, [selected, question.options, answers]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6F0" }}>
@@ -58,7 +84,7 @@ export function OnboardingQuestionScreen({
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <OnboardingProgress step={step} total={totalSteps} />
+          <OnboardingProgress step={stepIndex + 1} total={totalSteps} />
 
           <Text className="font-serif-semibold text-text-primary text-2xl mb-2">
             {question.question}
@@ -75,28 +101,26 @@ export function OnboardingQuestionScreen({
             {question.options.map((option) => (
               <OnboardingOptionButton
                 key={option.value}
-                label={option.label}
+                label={requiredFocusArea === option.value ? `${option.label} (required)` : option.label}
                 selected={selected.includes(option.value)}
                 onPress={() => onSelect(option.value)}
               />
             ))}
           </View>
 
-          {showOtherField && question.otherFieldLabel ? (
-            <View className="mt-2 mb-2">
-              <Text className="font-sans-medium text-text-primary text-sm mb-2">
-                {question.otherFieldLabel}
-              </Text>
+          {activeReveals.map((reveal) => (
+            <View key={reveal.field} className="mt-2 mb-2">
+              <Text className="font-sans-medium text-text-primary text-sm mb-2">{reveal.label}</Text>
               <TextInput
-                value={otherText}
-                onChangeText={onOtherTextChange}
+                value={answers[reveal.field]}
+                onChangeText={(text) => onTextChange(reveal.field, text)}
                 placeholder="Type here"
                 placeholderTextColor="#8B8175"
                 multiline
                 style={styles.textInput}
               />
             </View>
-          ) : null}
+          ))}
         </ScrollView>
 
         <View style={styles.footer}>

@@ -1,54 +1,123 @@
 import { create } from "zustand";
 
-import { getStructuredQuestion, TOTAL_ONBOARDING_STEPS } from "@/data/onboardingQuestions";
-import type { OnboardingAnswers, OtherTextField, StructuredAnswerField } from "@/types/onboarding";
+import {
+  clearInapplicableBranches,
+  getOnboardingScreens,
+  getQuestionForField,
+  REQUIRED_FOCUS_AREA_BY_GOAL,
+} from "@/data/onboardingQuestions";
+import type { OnboardingAnswers, OnboardingFieldId, OnboardingTextFieldId } from "@/types/onboarding";
 
 const initialAnswers: OnboardingAnswers = {
   primaryGoal: [],
   primaryGoalOther: "",
-  currentActivity: [],
+  focusAreas: [],
+  existingHabits: [],
+  existingHabitsOther: "",
+  activityLevel: [],
   barriers: [],
-  barriersOther: "",
-  timeAvailable: [],
-  activityPreferences: [],
-  activityPreferencesOther: "",
-  whenItFits: [],
-  whenItFitsOther: "",
-  goalSpecific: [],
-  goalSpecificOther: "",
+  barrierOther: "",
+  dailyTime: [],
+  habitTimes: [],
+  habitTimeOther: "",
+  movementFit: [],
+  movementFitOther: "",
+  strengthSetup: [],
+  strengthEquipment: [],
+  strengthEquipmentOther: "",
+  strengthSetupOther: "",
+  foodChallenges: [],
+  foodChallengeOther: "",
+  sleepChallenges: [],
+  sleepChallengeOther: "",
+  routineChallenges: [],
+  routineChallengeOther: "",
+  stressChallenges: [],
+  stressChallengeOther: "",
+  focusDiscoverySignals: [],
   constraints: [],
-  constraintsOther: "",
-  finalNote: "",
+  constraintsDetail: "",
+  additionalContext: "",
 };
 
+// If the primary goal changes to/from one that requires a focus area
+// (SCREEN_SPECS.md Question 2's "Required mapping from Question 1"), moves
+// that required area in/out of focusAreas and clears any adaptive-branch
+// answers the new selection no longer supports.
+function applyRequiredFocusArea(
+  answers: OnboardingAnswers,
+  oldGoal: string | undefined,
+  newGoal: string | undefined
+): OnboardingAnswers {
+  const oldRequired = oldGoal ? REQUIRED_FOCUS_AREA_BY_GOAL[oldGoal] : undefined;
+  const newRequired = newGoal ? REQUIRED_FOCUS_AREA_BY_GOAL[newGoal] : undefined;
+
+  if (oldRequired === newRequired) return answers;
+
+  let focusAreas = answers.focusAreas.filter((area) => area !== oldRequired);
+
+  if (newRequired) {
+    // A forced focus area is a real selection, so it's incompatible with
+    // the exclusive "not sure" option, same as picking any other area.
+    focusAreas = focusAreas.filter((area) => area !== "not_sure");
+    if (!focusAreas.includes(newRequired)) {
+      if (focusAreas.length >= 3) {
+        // Already at the max - make room for the newly-required area rather
+        // than silently exceeding the limit of 3.
+        focusAreas = focusAreas.slice(0, 2);
+      }
+      focusAreas = [...focusAreas, newRequired];
+    }
+  }
+
+  return clearInapplicableBranches({ ...answers, focusAreas });
+}
+
 interface OnboardingStore {
-  step: number;
+  stepIndex: number;
   answers: OnboardingAnswers;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
-  selectOption: (field: StructuredAnswerField, value: string) => void;
-  setOtherText: (field: OtherTextField, text: string) => void;
-  setFinalNote: (text: string) => void;
+  selectOption: (field: OnboardingFieldId, value: string) => void;
+  setOtherText: (field: OnboardingTextFieldId, text: string) => void;
+  setAdditionalContext: (text: string) => void;
   resetOnboarding: () => void;
 }
 
 // Ephemeral, in-progress onboarding answers only (per AGENTS.md's State
-// Management Rules) - nothing here is the source of truth. The next task
+// Management Rules) - nothing here is the source of truth. lib/onboarding.ts
 // batches `answers` into a single Supabase write on final submit.
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
-  step: 1,
+  stepIndex: 0,
   answers: initialAnswers,
 
   goToNextStep: () =>
-    set((state) => ({ step: Math.min(state.step + 1, TOTAL_ONBOARDING_STEPS) })),
+    set((state) => {
+      const lastIndex = getOnboardingScreens(state.answers).length;
+      return { stepIndex: Math.min(state.stepIndex + 1, lastIndex) };
+    }),
 
-  goToPreviousStep: () => set((state) => ({ step: Math.max(state.step - 1, 1) })),
+  goToPreviousStep: () => set((state) => ({ stepIndex: Math.max(state.stepIndex - 1, 0) })),
 
   selectOption: (field, value) => {
-    const { answers, step } = get();
-    const question = getStructuredQuestion(step, answers);
+    const { answers } = get();
+    const question = getQuestionForField(field, answers);
     const option = question.options.find((o) => o.value === value);
     if (!option) return;
+
+    // The focus area required by the current primary goal can't be
+    // deselected directly, and can't be wiped out by picking the exclusive
+    // "not sure" option either - it only changes if the primary goal
+    // changes.
+    if (field === "focusAreas") {
+      const requiredArea = answers.primaryGoal[0]
+        ? REQUIRED_FOCUS_AREA_BY_GOAL[answers.primaryGoal[0]]
+        : undefined;
+      const hasRequiredArea = !!requiredArea && answers.focusAreas.includes(requiredArea);
+      if (hasRequiredArea && (value === requiredArea || option.exclusive)) {
+        return;
+      }
+    }
 
     const current = answers[field];
     let next: string[];
@@ -75,23 +144,28 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 
     const updated: OnboardingAnswers = { ...answers, [field]: next };
 
-    // If the option that revealed the free-text field is no longer selected,
-    // the stale text is cleared so it's never submitted as active input.
-    if (question.otherId) {
+    // If the option that revealed a free-text field is no longer selected -
+    // and no other selected option on this question shares that same field
+    // (e.g. Constraints, where several options share one text box) - the
+    // stale text is cleared so it's never submitted as active input.
+    for (const opt of question.options) {
+      if (!opt.reveals || next.includes(opt.value)) continue;
       const stillRevealed = next.some(
-        (v) => question.options.find((o) => o.value === v)?.revealsText
+        (v) => question.options.find((o) => o.value === v)?.reveals?.field === opt.reveals!.field
       );
       if (!stillRevealed) {
-        updated[question.otherId] = "";
+        updated[opt.reveals.field] = "";
       }
     }
 
-    // Question 7's branch depends on the primary goal - if the goal changes
-    // to a different branch, the previously answered goal-specific question
-    // no longer applies, so it's cleared rather than silently carried over.
     if (field === "primaryGoal" && answers.primaryGoal[0] !== next[0]) {
-      updated.goalSpecific = [];
-      updated.goalSpecificOther = "";
+      set({ answers: applyRequiredFocusArea(updated, answers.primaryGoal[0], next[0]) });
+      return;
+    }
+
+    if (field === "focusAreas" || field === "strengthSetup") {
+      set({ answers: clearInapplicableBranches(updated) });
+      return;
     }
 
     set({ answers: updated });
@@ -100,7 +174,8 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   setOtherText: (field, text) =>
     set((state) => ({ answers: { ...state.answers, [field]: text } })),
 
-  setFinalNote: (text) => set((state) => ({ answers: { ...state.answers, finalNote: text } })),
+  setAdditionalContext: (text) =>
+    set((state) => ({ answers: { ...state.answers, additionalContext: text } })),
 
-  resetOnboarding: () => set({ step: 1, answers: initialAnswers }),
+  resetOnboarding: () => set({ stepIndex: 0, answers: initialAnswers }),
 }));

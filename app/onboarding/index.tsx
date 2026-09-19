@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 
 import { AnythingElseStep } from "@/components/onboarding/AnythingElseStep";
 import { OnboardingQuestionScreen } from "@/components/onboarding/OnboardingQuestionScreen";
-import { getStructuredQuestion, TOTAL_ONBOARDING_STEPS } from "@/data/onboardingQuestions";
+import { getOnboardingScreens, getQuestionForField } from "@/data/onboardingQuestions";
 import { saveOnboardingResponses } from "@/lib/onboarding";
 import { useOnboardingStore } from "@/store/onboardingStore";
 
@@ -12,20 +12,26 @@ export default function OnboardingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const step = useOnboardingStore((s) => s.step);
+  const stepIndex = useOnboardingStore((s) => s.stepIndex);
   const answers = useOnboardingStore((s) => s.answers);
   const goToNextStep = useOnboardingStore((s) => s.goToNextStep);
   const goToPreviousStep = useOnboardingStore((s) => s.goToPreviousStep);
   const selectOption = useOnboardingStore((s) => s.selectOption);
   const setOtherText = useOnboardingStore((s) => s.setOtherText);
-  const setFinalNote = useOnboardingStore((s) => s.setFinalNote);
+  const setAdditionalContext = useOnboardingStore((s) => s.setAdditionalContext);
   const resetOnboarding = useOnboardingStore((s) => s.resetOnboarding);
 
+  // The screen list depends on focus areas (Question 2), so it's recomputed
+  // from the current answers every render rather than using a fixed total -
+  // per SCREEN_SPECS.md, the flow branches and has no fixed question count.
+  const screens = getOnboardingScreens(answers);
+  const totalSteps = screens.length + 1;
+
   // Shared by both Skip and Build my plan - they save the exact same
-  // structured batch, differing only in whether finalNote is empty. Zustand
-  // stays untouched (and the screen stays put) until the save actually
-  // succeeds, so a failure never silently marks onboarding complete or
-  // loses answers.
+  // structured batch, differing only in whether additionalContext is
+  // empty. Zustand stays untouched (and the screen stays put) until the
+  // save actually succeeds, so a failure never silently marks onboarding
+  // complete or loses answers.
   const finishOnboarding = async () => {
     if (submitting) return;
 
@@ -44,15 +50,16 @@ export default function OnboardingScreen() {
     router.replace("/plan");
   };
 
-  if (step === TOTAL_ONBOARDING_STEPS) {
+  if (stepIndex >= screens.length) {
     return (
       <AnythingElseStep
-        step={step}
-        totalSteps={TOTAL_ONBOARDING_STEPS}
-        value={answers.finalNote}
+        step={stepIndex + 1}
+        totalSteps={totalSteps}
+        value={answers.additionalContext}
         submitting={submitting}
         error={error}
-        onChangeText={setFinalNote}
+        onChangeText={setAdditionalContext}
+        onBack={goToPreviousStep}
         onSkip={finishOnboarding}
         onBuildPlan={finishOnboarding}
         onRetry={finishOnboarding}
@@ -60,22 +67,18 @@ export default function OnboardingScreen() {
     );
   }
 
-  const question = getStructuredQuestion(step, answers);
+  const fieldId = screens[stepIndex];
+  const question = getQuestionForField(fieldId, answers);
 
   return (
     <OnboardingQuestionScreen
       question={question}
-      step={step}
-      totalSteps={TOTAL_ONBOARDING_STEPS}
-      selected={answers[question.id]}
-      otherText={question.otherId ? answers[question.otherId] : ""}
-      canGoBack={step > 1}
-      onSelect={(value) => selectOption(question.id, value)}
-      onOtherTextChange={(text) => {
-        if (question.otherId) {
-          setOtherText(question.otherId, text);
-        }
-      }}
+      answers={answers}
+      stepIndex={stepIndex}
+      totalSteps={totalSteps}
+      canGoBack={stepIndex > 0}
+      onSelect={(value) => selectOption(fieldId, value)}
+      onTextChange={setOtherText}
       onNext={goToNextStep}
       onBack={goToPreviousStep}
     />
