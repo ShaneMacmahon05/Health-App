@@ -8,7 +8,7 @@ const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const REQUEST_TIMEOUT_MS = 55_000;
 
 export const MODEL = "gpt-5.6-terra";
-export const PROMPT_VERSION = "weekly-plan-v2";
+export const PROMPT_VERSION = "weekly-plan-v3";
 
 export class OpenAIRequestError extends Error {
   constructor(message: string, public readonly cause?: unknown) {

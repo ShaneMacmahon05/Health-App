@@ -112,12 +112,18 @@ export default {
       return jsonResponse({ plan: existing.plan, actions: existing.actions }, 200);
     }
 
-    // 2. Read onboarding context. completed_at must be set - generation must
-    // never run against a partial/in-progress onboarding row.
+    // 2. Read onboarding context (onboarding-v2 schema - see
+    // supabase/migrations/20260918120000_onboarding_intake_v2.sql).
+    // completed_at must be set - generation must never run against a
+    // partial/in-progress onboarding row. The legacy fixed-flow columns
+    // (preferred_activities, activity_other, goal_specific_question,
+    // goal_specific_answers, goal_specific_other) are deliberately not
+    // selected here - see prompt-v2 migration notes for why they still
+    // exist in the table.
     const { data: onboarding, error: onboardingError } = await supabaseClient
       .from("onboarding_responses")
       .select(
-        "primary_goal, primary_goal_other, activity_level, barriers, barrier_other, daily_time, preferred_activities, activity_other, habit_times, habit_time_other, goal_specific_question, goal_specific_answers, goal_specific_other, constraints, constraints_detail, additional_context, completed_at"
+        "primary_goal, primary_goal_other, focus_areas, existing_habits, existing_habits_other, activity_level, barriers, barrier_other, daily_time, habit_times, habit_time_other, movement_fit, movement_fit_other, strength_setup, strength_equipment, strength_equipment_other, strength_setup_other, food_challenges, food_challenge_other, sleep_challenges, sleep_challenge_other, routine_challenges, routine_challenge_other, stress_challenges, stress_challenge_other, focus_discovery_signals, constraints, constraints_detail, additional_context, completed_at"
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -137,17 +143,30 @@ export default {
     const onboardingContext: OnboardingContext = {
       primary_goal: onboarding.primary_goal,
       primary_goal_other: onboarding.primary_goal_other,
+      focus_areas: onboarding.focus_areas ?? [],
+      existing_habits: onboarding.existing_habits ?? [],
+      existing_habits_other: onboarding.existing_habits_other,
       activity_level: onboarding.activity_level,
       barriers: onboarding.barriers ?? [],
       barrier_other: onboarding.barrier_other,
       daily_time: onboarding.daily_time,
-      preferred_activities: onboarding.preferred_activities ?? [],
-      activity_other: onboarding.activity_other,
       habit_times: onboarding.habit_times ?? [],
       habit_time_other: onboarding.habit_time_other,
-      goal_specific_question: onboarding.goal_specific_question,
-      goal_specific_answers: onboarding.goal_specific_answers ?? [],
-      goal_specific_other: onboarding.goal_specific_other,
+      movement_fit: onboarding.movement_fit,
+      movement_fit_other: onboarding.movement_fit_other,
+      strength_setup: onboarding.strength_setup,
+      strength_equipment: onboarding.strength_equipment,
+      strength_equipment_other: onboarding.strength_equipment_other,
+      strength_setup_other: onboarding.strength_setup_other,
+      food_challenges: onboarding.food_challenges,
+      food_challenge_other: onboarding.food_challenge_other,
+      sleep_challenges: onboarding.sleep_challenges,
+      sleep_challenge_other: onboarding.sleep_challenge_other,
+      routine_challenges: onboarding.routine_challenges,
+      routine_challenge_other: onboarding.routine_challenge_other,
+      stress_challenges: onboarding.stress_challenges,
+      stress_challenge_other: onboarding.stress_challenge_other,
+      focus_discovery_signals: onboarding.focus_discovery_signals,
       constraints: onboarding.constraints ?? [],
       constraints_detail: onboarding.constraints_detail,
       additional_context: onboarding.additional_context,
