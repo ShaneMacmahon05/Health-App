@@ -28,7 +28,7 @@ _This section is the condensed source of truth for what to build. The full reaso
 
 ### Scope
 
-**Build:** email/password auth (Supabase, 6-digit email verification code, forgot-password emailed link, terms/privacy consent checkbox), onboarding intake (~5–7 single-question screens, only "physical constraints" has free text), weekly plan (simple list, 3–5 actions), daily check-in (mood tap + optional note), weekly reflection (2–3 questions, equal-weight skip button), one local daily reminder, progress view (last 4 weeks only, via a header link not a tab).
+**Build:** email/password auth (Supabase, 6-digit email verification code, forgot-password emailed link, terms/privacy consent checkbox), onboarding intake (**9 single-question screens: 8 structured/context screens plus 1 final optional open-text screen; selected structured questions may reveal a short "Something else" text field; one question branches based on the user's primary goal**), weekly plan (simple list, 3–5 actions), daily check-in (mood tap + optional note), weekly reflection (2–3 questions, equal-weight skip button), one local daily reminder, progress view (last 4 weeks only).
 
 **Do not build:** open-ended AI chat, graphs/weight/measurement logging/body photos, a recipe or workout video library, subscriptions/billing, social login (Google/Apple). If a request would add something outside this list, say so before building it.
 
@@ -41,7 +41,12 @@ _This section is the condensed source of truth for what to build. The full reaso
 - Plan generation failure → retry only, never a generic fallback plan.
 - Offline daily check-in → inline error, retry once connected, not saved locally.
 - A failed checkbox save on Home retries quietly in background; only shows a small inline "tap to retry" if it keeps failing.
-- No streak counts, "days missed," or similar messaging anywhere.
+- Onboarding is 9 screens total: 8 structured/context questions plus one final optional open-text screen.
+- Most onboarding questions are answered by tapping options; selected questions may reveal a short free-text field only when the user selects "Something else" or when extra context is genuinely needed.
+- Onboarding question 7 branches based on the user's answer to the primary-goal question so the first plan gets one extra piece of goal-specific context.
+- Onboarding answers are held locally during the flow and submitted together at the end.
+- Every onboarding answer should have a plausible effect on plan generation. Do not collect information that is not used.
+- The first plan should use known personal context to make actions specific, but must never invent schedule details, preferences, constraints, or circumstances the user did not provide.
 
 ### Screens
 
@@ -51,7 +56,8 @@ _This section is the condensed source of truth for what to build. The full reaso
 | Login | Returning user sign-in | Email, password, forgot-password link | Home (onboarding done) or Onboarding (not done) |
 | Account Creation | Sign up | Email, password (rule shown inline), terms/privacy checkbox | Email Verification |
 | Email Verification | Confirm email | 6-digit code input, resend link | Onboarding (first question) |
-| Onboarding Question (×5–7) | Collect one answer per screen | Progress indicator, question, tap-select (free text only on physical constraints), Next/Back | Next question, or Home (loading state) on last |
+| Onboarding Question (×8) | Collect personalised planning context | Progress indicator, one question per screen, mostly tap-select options, conditional "Something else" text where specified, Q7 branches from primary goal, Next/Back | Next question or final Anything Else screen |
+| Onboarding: Anything Else | Final optional personal context | Progress indicator, optional open-text box, equal-weight Skip / Build my plan buttons | Plan loading state |
 | Home | Main hub | This week's plan (checkboxes), today's check-in prompt, "Ready for next week?" (secondary→primary at day 7), "Past weeks" link | Daily Check-in / Weekly Reflection / Progress View |
 | Daily Check-in | One daily signal | Mood tap (Great/Okay/Rough, required), optional note, Submit | Home |
 | Weekly Reflection | Feed next plan | 2–3 questions, Continue or equal-weight Skip | Home (loading state) |

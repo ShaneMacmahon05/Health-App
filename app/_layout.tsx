@@ -18,6 +18,10 @@ import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
 
+/**
+ * Root layout component that loads fonts and manages the splash screen.
+ * @returns {JSX.Element | null} The root Stack navigator or null while loading fonts.
+ */
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -29,6 +33,9 @@ export default function RootLayout() {
     Fraunces_400Regular_Italic,
   });
 
+  /**
+   * Callback to hide the splash screen once fonts are loaded or an error occurs.
+   */
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded || fontError) {
       await SplashScreen.hideAsync();
