@@ -98,8 +98,8 @@ export function validateGeneratedPlan(raw: unknown): GeneratedWeeklyPlan {
   if (!Array.isArray(plan.actions)) {
     throw new PlanValidationError("actions must be an array");
   }
-  if (plan.actions.length < 3 || plan.actions.length > 5) {
-    throw new PlanValidationError(`actions must contain 3-5 items, got ${plan.actions.length}`);
+  if (plan.actions.length < 2 || plan.actions.length > 5) {
+    throw new PlanValidationError(`actions must contain 2-5 items, got ${plan.actions.length}`);
   }
 
   const actions = plan.actions.map((action, index) => validateAction(action, index));
